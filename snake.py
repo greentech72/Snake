@@ -2,18 +2,20 @@ import tkinter as tk
 import random as rand
 
 # Consts
-DEBUG = True
+DEBUG = False
 
 # For Main Menu
 MAIN_MENU_WIDTH = 400
 MAIN_MENU_HEIGHT = 500
 BUTTON_WIDTH = 10
+CHECK_BUTTON_VALUE = None
 
 # For game
 GAME_WIDTH = 800
 GAME_HEIGHT = 800
 SIZE = 50
-SPEED = 300
+SPEED = 500
+DIE_BY_BORDER = False
 
 # Objects
 root = None
@@ -34,7 +36,7 @@ class apple:
 		# Randomsize apple position
 		x, y = rand.randint(0, GAME_WINDOW_CONFIG['width'] / SIZE) - 1, rand.randint(0, GAME_WINDOW_CONFIG['height'] / SIZE - 1)
 		# Create apple
-		self.obj = canv.create_oval(SIZE * x, SIZE * y, SIZE * (x + 1), SIZE * (y + 1), fill = 'red')
+		self.obj = canv.create_oval(SIZE * x, SIZE * y, SIZE * (x + 1), SIZE * (y + 1), fill = '#e31251')
 
 	# recreate out apple
 	def re(self):
@@ -42,12 +44,14 @@ class apple:
 		x, y = rand.randint(0, GAME_WINDOW_CONFIG['width'] / SIZE - 1), rand.randint(0, GAME_WINDOW_CONFIG['height'] / SIZE - 1)
 		# recreate apple
 		self.canv.delete(self.obj)
-		self.obj = canv.create_oval(SIZE * x, SIZE * y, SIZE * (x + 1), SIZE * (y + 1), fill = 'red')
+		self.obj = canv.create_oval(SIZE * x, SIZE * y, SIZE * (x + 1), SIZE * (y + 1), fill = '#e31251')
 
 class snake:
-	def __init__(self, canv, color, WINDOW_WIDTH, SIZE, APPLE):
+	def __init__(self, canv, color, WINDOW_WIDTH, WINDOW_HEIGHT, SIZE, APPLE, DIE_BY_BORDER):
 		# Preparing consts
+		self.DIE_BY_BORDER = DIE_BY_BORDER
 		self.GAME_WIDTH = WINDOW_WIDTH
+		self.GAME_HEIGHT = WINDOW_HEIGHT
 		self.SIZE = SIZE
 		self.color = color
 		self.canv = canv 
@@ -73,6 +77,31 @@ class snake:
 		if(self.canv.coords(self.segments[0]) == self.canv.coords(APPLE.obj)):
 			self.add_seg()
 			APPLE.re()
+			return True
+		return False
+
+	def check_border(self):
+		if(self.DIE_BY_BORDER):
+			x1, y1, x2, y2 = self.canv.coords(self.segments[0])
+			if(x1 <= 0 or y1 <= 0 or x2 >= self.GAME_WIDTH or y2 >= self.GAME_HEIGHT):
+				return True
+		else:
+			for seg in self.segments:
+				x1, y1, x2, y2 = self.canv.coords(seg)
+				if(x1 < 0):
+					x1 = self.GAME_WIDTH
+					x2 = x1 + self.SIZE
+				elif(x2 > self.GAME_WIDTH):
+					x2 = 0
+					x1 = 0 - self.SIZE
+				if(y1 < 0):
+					y1 = self.GAME_HEIGHT
+					y2 = y1 + self.SIZE
+				elif(y2 > self.GAME_HEIGHT):
+					y2 = 0
+					y1 = 0 - self.SIZE
+				canv.coords(seg, x1, y1, x2, y2)
+		return False
 
 	def add_seg(self):
 		self.SCORE += 10
@@ -101,9 +130,15 @@ class snake:
 		i = 0
 		if(self.check_self_eat()):
 			GAME_ = False
-			# DEFEAT BY SELF EAT
+			print("DEFEAT")
+			Defeat(0, canv, self.GAME_WIDTH, self.GAME_HEIGHT)
 			return
-		self.check_apple_eat(APPLE)
+		if(self.check_apple_eat(APPLE) and SPEED != None):
+			SPEED -= 10
+		if(self.check_border()):
+			Defeat(1, canv, self.GAME_WIDTH, self.GAME_HEIGHT)
+			print("DEFEAT")
+			return 
 		for seg in self.segments:
 			if(self.vector[i] == 'r'):
 				self.canv.move(seg, self.SIZE, 0)
@@ -120,7 +155,6 @@ class snake:
 		if(root != None):
 			root.after(SPEED, lambda: self.move(root = root, SPEED = SPEED))
 
-
 	def bind(self, root):
 		root.bind('a', lambda a: self.move('l'))
 		root.bind('d', lambda a: self.move('r'))
@@ -135,7 +169,14 @@ def grid(canv, GAME_WINDOW_CONFIG):
 	for i in range(0, GAME_WINDOW_CONFIG['height'], GAME_WINDOW_CONFIG['size']):
 		canv.create_line(0, i, GAME_WINDOW_CONFIG['height'], i, width = 2, fill = 'red')
 
-def start(root, canv, GAME_WINDOW_CONFIG, objects_list, GAME_OBJECTS):
+def Defeat(reason, canv, WIDTH, HEIGHT):
+	# 0 - self
+	# 1 - border
+	canv.create_text(WIDTH / 2, HEIGHT/ 2, text = "Defeat by " +("self eat" if reason == 0 else "border"),fill = 'red', font = 'Arial 20')
+	canv.create_text(WIDTH / 2, HEIGHT/ 2 + 30, text = "'q' for exit" ,fill = 'red', font = 'Arial 12')	
+	canv.create_text(WIDTH / 2, HEIGHT/ 2 + 60, text = "'r' for save your score" ,fill = 'red', font = 'Arial 12')	
+
+def start(root, canv, GAME_WINDOW_CONFIG, objects_list, GAME_OBJECTS, DIE_BY_BORDER):
 	global DEBUG
 	GAME_WINDOW_CONFIG['in_game'] = True
 	# Prepare GAME WINDOW
@@ -147,7 +188,8 @@ def start(root, canv, GAME_WINDOW_CONFIG, objects_list, GAME_OBJECTS):
 	canv.pack()
 	# Prepare GAME configurations
 	GAME_OBJECTS['apple'] = apple(canv, GAME_WINDOW_CONFIG) 					# Create apple
-	GAME_OBJECTS['snake'] = snake(canv, ['blue', 'green'], GAME_WINDOW_CONFIG['width'],GAME_WINDOW_CONFIG['size'], GAME_OBJECTS['apple']) 	# Create snake
+	GAME_OBJECTS['snake'] = snake(canv, ['blue', 'green'], GAME_WINDOW_CONFIG['width'], GAME_WINDOW_CONFIG['height'],GAME_WINDOW_CONFIG['size'], 
+	GAME_OBJECTS['apple'], DIE_BY_BORDER) 	# Create snake
 	GAME_OBJECTS['snake'].bind(root)						# Standart binds
 	if(DEBUG):
 		grid(canv, GAME_WINDOW_CONFIG)
@@ -168,25 +210,39 @@ root.iconbitmap("img.ico")
 canv = tk.Canvas(root, width = MAIN_MENU_WIDTH, height = MAIN_MENU_HEIGHT, bg = "#e7ff6e")
 
 # Main Menu buttons and their config
-b_frame = tk.Frame(root, width = 169, height = 234, bg = "#e7ff6e") 
+b_frame = tk.Frame(root, width = 200, height = 300, bg = "#e7ff6e") #e7ff6e 
 
 b_start = tk.Button(b_frame, bg = '#d16eff', width = BUTTON_WIDTH,font = 'Georgia 20', text = "Start", 
-	command = lambda: start(root, canv, GAME_WINDOW_CONFIG, MAIN_MENU, GAME_OBJECTS))
+	command = lambda: start(root, canv, GAME_WINDOW_CONFIG, MAIN_MENU, GAME_OBJECTS, DIE_BY_BORDER))
 b_score = tk.Button(b_frame, bg = '#d16eff', width = BUTTON_WIDTH,font = 'Georgia 20', text = "Score", command = None)
 b_exit = tk.Button(b_frame, bg = '#d16eff', width = BUTTON_WIDTH,font = 'Georgia 20', text = "Exit", command = root.quit)
 
-b_exit.place(x = 0, y = 180)
-b_score.place(x = 0, y = 90)
+b_exit.place(x = 0, y = 190)
+b_score.place(x = 0, y = 110)
 b_start.place(x = 0, y = 0)
-b_frame.place(x = MAIN_MENU_WIDTH / 2 - 90, y = 120)
+b_frame.place(x = MAIN_MENU_WIDTH / 2 - 90, y = 110)
 
 MAIN_MENU.append(b_start)
 MAIN_MENU.append(b_score)
 MAIN_MENU.append(b_exit)
 MAIN_MENU.append(b_frame)
 
-if(DEBUG):
-	root.bind("q", lambda a: root.quit())
+def BORDER(val):
+	global DIE_BY_BORDER
+	if(val):
+		DIE_BY_BORDER = True
+	else:
+		DIE_BY_BORDER = False
+
+# CHECK BUTTON
+CHECK_BUTTON_VALUE = tk.IntVar()
+cb_check = tk.Checkbutton(b_frame,width = 14, bg = '#d16eff', font = "Georgia 13", 
+	text = "Defeat by border", variable = CHECK_BUTTON_VALUE, command = lambda: BORDER(CHECK_BUTTON_VALUE.get()))
+
+cb_check.place(x = 0, y = 52)
+
+root.bind("q", lambda a: root.quit())
+root.bind("r", lambda a: start(root, canv, GAME_WINDOW_CONFIG, MAIN_MENU, GAME_OBJECTS, DIE_BY_BORDER))
 
 # MAIN LOOP AND canv pack
 canv.pack() # use pack() because we need root at (0, 0)
