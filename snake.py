@@ -83,7 +83,7 @@ class snake:
 	def check_border(self):
 		if(self.DIE_BY_BORDER):
 			x1, y1, x2, y2 = self.canv.coords(self.segments[0])
-			if(x1 <= 0 or y1 <= 0 or x2 >= self.GAME_WIDTH or y2 >= self.GAME_HEIGHT):
+			if(x1 < 0 or y1 < 0 or x2 > self.GAME_WIDTH or y2 > self.GAME_HEIGHT):
 				return True
 		else:
 			for seg in self.segments:
@@ -131,12 +131,12 @@ class snake:
 		if(self.check_self_eat()):
 			GAME_ = False
 			print("DEFEAT")
-			Defeat(0, canv, self.GAME_WIDTH, self.GAME_HEIGHT)
+			Defeat(0, canv, self.GAME_WIDTH, self.GAME_HEIGHT, self.SCORE)
 			return
 		if(self.check_apple_eat(APPLE) and SPEED != None):
 			SPEED -= 10
 		if(self.check_border()):
-			Defeat(1, canv, self.GAME_WIDTH, self.GAME_HEIGHT)
+			Defeat(1, canv, self.GAME_WIDTH, self.GAME_HEIGHT, self.SCORE)
 			print("DEFEAT")
 			return 
 		for seg in self.segments:
@@ -169,15 +169,42 @@ def grid(canv, GAME_WINDOW_CONFIG):
 	for i in range(0, GAME_WINDOW_CONFIG['height'], GAME_WINDOW_CONFIG['size']):
 		canv.create_line(0, i, GAME_WINDOW_CONFIG['height'], i, width = 2, fill = 'red')
 
-def Defeat(reason, canv, WIDTH, HEIGHT):
+def save(name, score):
+	file = open("data.dat", 'a+')
+	file.write(str(name) + " : " + str(score) + "\n")
+	file.close()
+
+def score_save(root, SCORE):
+	global BUTTON_WIDTH
+	top = tk.Toplevel(root, bg = '#e7ff6e')	
+	geometry, x, y = str(root.geometry()).split("+")
+	top.geometry( "300x300+" + str(x) + "+" + str(y) )
+	top.title("Score saver")
+	# Edit
+	e = tk.Entry(top, font = 'Georgia 20')
+	tk.Label(top,bg = '#e7ff6e', text = "Enter your nickname", font = 'Georgia 20').place(x = 0, y = 0)
+	b_exit = tk.Button(top, bg = '#d16eff', width = BUTTON_WIDTH, font = 'Georgia 20', text = "Exit", command = top.quit)
+	b_comit = tk.Button(top, bg = '#d16eff', width = BUTTON_WIDTH, font = 'Georgia 20', text = "Submit", command = lambda: save(e.get(), SCORE))
+
+	b_comit.place(x = 50, y = 90)
+	b_exit.place(x = 50, y = 180)
+	e.place(x = 0, y = 40)
+	top.bind("q", lambda a: top.quit())
+	top.mainloop()
+
+def Defeat(reason, canv, WIDTH, HEIGHT, SCORE):
+	global root
 	# 0 - self
 	# 1 - border
 	canv.create_text(WIDTH / 2, HEIGHT/ 2, text = "Defeat by " +("self eat" if reason == 0 else "border"),fill = 'red', font = 'Arial 20')
 	canv.create_text(WIDTH / 2, HEIGHT/ 2 + 30, text = "'q' for exit" ,fill = 'red', font = 'Arial 12')	
-	canv.create_text(WIDTH / 2, HEIGHT/ 2 + 60, text = "'r' for save your score" ,fill = 'red', font = 'Arial 12')	
+	canv.create_text(WIDTH / 2, HEIGHT/ 2 + 60, text = "'r' to restart your game" ,fill = 'red', font = 'Arial 12')	
+	canv.create_text(WIDTH / 2, HEIGHT/ 2 + 90, text = "'h' to save your scorer" ,fill = 'red', font = 'Arial 12')	
+	root.bind("h", lambda a: score_save(root, SCORE))
 
 def start(root, canv, GAME_WINDOW_CONFIG, objects_list, GAME_OBJECTS, DIE_BY_BORDER):
 	global DEBUG
+	canv.delete("all")
 	GAME_WINDOW_CONFIG['in_game'] = True
 	# Prepare GAME WINDOW
 	for object in objects_list:
@@ -247,3 +274,16 @@ root.bind("r", lambda a: start(root, canv, GAME_WINDOW_CONFIG, MAIN_MENU, GAME_O
 # MAIN LOOP AND canv pack
 canv.pack() # use pack() because we need root at (0, 0)
 root.mainloop()
+
+
+
+
+
+
+
+
+
+
+
+
+
