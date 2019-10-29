@@ -14,44 +14,48 @@ GAME_WIDTH = 800
 GAME_HEIGHT = 800
 SIZE = 50
 SPEED = 300
-GAME_ = False
-SCORE = 0
-SCORE_TEXT = None
 
 # Objects
 root = None
 canv = None
 
-# Game OBJECTS
-SNAKE = None
-APPLE = None
-
 # Lists
 MAIN_MENU = []
-GAME_WINDOW_CONFIG = {"width" : GAME_WIDTH, "height" : GAME_HEIGHT}
+GAME_WINDOW_CONFIG = {"width" : GAME_WIDTH, "height" : GAME_HEIGHT, "size" : SIZE, "in_game" : False, "speed" : SPEED, "score" : 0}
+GAME_OBJECTS = {"snake" : None, "apple" : None}
 
 # Classes
 class apple:
-	def __init__(self, canv):
-		global SIZE, GAME_WIDTH, GAME_HEIGHT
+	def __init__(self, canv, GAME_WINDOW_CONFIG):
+		# Preparing consts
+		SIZE = GAME_WINDOW_CONFIG['size']
 		self.SIZE = SIZE
 		self.canv = canv
-		x, y = rand.randint(0, GAME_WIDTH / SIZE) - 1, rand.randint(0, GAME_HEIGHT / SIZE - 1)
+		# Randomsize apple position
+		x, y = rand.randint(0, GAME_WINDOW_CONFIG['width'] / SIZE) - 1, rand.randint(0, GAME_WINDOW_CONFIG['height'] / SIZE - 1)
+		# Create apple
 		self.obj = canv.create_oval(SIZE * x, SIZE * y, SIZE * (x + 1), SIZE * (y + 1), fill = 'red')
 
+	# recreate out apple
 	def re(self):
-		x, y = rand.randint(0, GAME_WIDTH / SIZE - 1), rand.randint(0, GAME_HEIGHT / SIZE - 1)
+		# Randomize apple position
+		x, y = rand.randint(0, GAME_WINDOW_CONFIG['width'] / SIZE - 1), rand.randint(0, GAME_WINDOW_CONFIG['height'] / SIZE - 1)
+		# recreate apple
 		self.canv.delete(self.obj)
 		self.obj = canv.create_oval(SIZE * x, SIZE * y, SIZE * (x + 1), SIZE * (y + 1), fill = 'red')
 
-
 class snake:
-	def __init__(self, canv, color):
-		global SIZE
+	def __init__(self, canv, color, WINDOW_WIDTH, SIZE, APPLE):
+		# Preparing consts
+		self.GAME_WIDTH = WINDOW_WIDTH
 		self.SIZE = SIZE
 		self.color = color
 		self.canv = canv 
 		self.vector = ['r','r','r']
+		self.SCORE = 0
+		self.APPLE = APPLE
+		self.SCORE_TEXT = self.canv.create_text(self.GAME_WIDTH / 2, 10, font = 'Arial 20', fill = 'red', text = str(self.SCORE))
+		# Create snake
 		self.segments = [canv.create_rectangle(SIZE * 4, SIZE, SIZE * 5, SIZE * 2, fill = color[0], outline = color[0]),
 		canv.create_rectangle(SIZE * 3, SIZE, SIZE * 4, SIZE * 2, fill = color[1], outline = color[1]),
 		canv.create_rectangle(SIZE * 2, SIZE, SIZE * 3, SIZE * 2, fill = color[1], outline = color[1])] # list for all segments
@@ -65,17 +69,15 @@ class snake:
 				return True
 		return False
 
-	def check_apple_eat(self):
-		global APPLE
+	def check_apple_eat(self, APPLE):
 		if(self.canv.coords(self.segments[0]) == self.canv.coords(APPLE.obj)):
 			self.add_seg()
 			APPLE.re()
 
 	def add_seg(self):
-		global SCORE, SCORE_TEXT, GAME_WIDTH
-		SCORE += 10
-		self.canv.delete(SCORE_TEXT)
-		SCORE_TEXT = self.canv.create_text(GAME_WIDTH / 2, 10, font = 'Arial 20', fill = 'red', text = str(SCORE))
+		self.SCORE += 10
+		self.canv.delete(self.SCORE_TEXT)
+		self.SCORE_TEXT = self.canv.create_text(self.GAME_WIDTH / 2, 10, font = 'Arial 20', fill = 'red', text = str(self.SCORE))
 		coords = self.canv.coords(self.segments[len(self.segments)-1])
 		if(self.vector[len(self.vector)-1] == 'r'):
 			coords[0] -= self.SIZE
@@ -93,6 +95,7 @@ class snake:
 		self.vector.append(self.vector[len(self.vector)-1])
 
 	def move(self, vector = "", root = None, SPEED = None): # vector : l, r, u, d
+		APPLE = self.APPLE
 		if(vector != ""):
 			self.vector[0] = vector
 		i = 0
@@ -100,7 +103,7 @@ class snake:
 			GAME_ = False
 			# DEFEAT BY SELF EAT
 			return
-		self.check_apple_eat()
+		self.check_apple_eat(APPLE)
 		for seg in self.segments:
 			if(self.vector[i] == 'r'):
 				self.canv.move(seg, self.SIZE, 0)
@@ -125,16 +128,16 @@ class snake:
 		root.bind('w', lambda a: self.move('u'))
 
 # Functions
+# Grid function for DEBUG
 def grid(canv, GAME_WINDOW_CONFIG):
-	global SIZE
-	for i in range(0, GAME_WINDOW_CONFIG['width'], SIZE):
+	for i in range(0, GAME_WINDOW_CONFIG['width'], GAME_WINDOW_CONFIG['size']):
 		canv.create_line(i, 0, i, GAME_WINDOW_CONFIG['width'], width = 2, fill = 'red')
-	for i in range(0, GAME_WINDOW_CONFIG['height'], SIZE):
+	for i in range(0, GAME_WINDOW_CONFIG['height'], GAME_WINDOW_CONFIG['size']):
 		canv.create_line(0, i, GAME_WINDOW_CONFIG['height'], i, width = 2, fill = 'red')
 
-def start(root, canv, GAME_WINDOW_CONFIG, objects_list):
-	global SNAKE, GAME_, DEBUG, SPEED, APPLE
-	GAME_ = True
+def start(root, canv, GAME_WINDOW_CONFIG, objects_list, GAME_OBJECTS):
+	global DEBUG
+	GAME_WINDOW_CONFIG['in_game'] = True
 	# Prepare GAME WINDOW
 	for object in objects_list:
 		object.destroy()
@@ -143,27 +146,32 @@ def start(root, canv, GAME_WINDOW_CONFIG, objects_list):
 	canv.configure(width = GAME_WINDOW_CONFIG['width'], height = GAME_WINDOW_CONFIG['height'])
 	canv.pack()
 	# Prepare GAME configurations
-	APPLE = apple(canv)
-	SNAKE = snake(canv, ['blue', 'green'])
-	SNAKE.bind(root)
+	GAME_OBJECTS['apple'] = apple(canv, GAME_WINDOW_CONFIG) 					# Create apple
+	GAME_OBJECTS['snake'] = snake(canv, ['blue', 'green'], GAME_WINDOW_CONFIG['width'],GAME_WINDOW_CONFIG['size'], GAME_OBJECTS['apple']) 	# Create snake
+	GAME_OBJECTS['snake'].bind(root)						# Standart binds
 	if(DEBUG):
 		grid(canv, GAME_WINDOW_CONFIG)
-		root.bind("l", lambda a: SNAKE.add_seg())
-	root.after(SPEED, lambda: SNAKE.move(root = root, SPEED = SPEED))
+		root.bind("l", lambda a: GAME_OBJECTS['snake'].add_seg())
+	# MAIN LOOP FUNCTION
+	root.after(SPEED, lambda: GAME_OBJECTS['snake'].move(root = root, SPEED = GAME_WINDOW_CONFIG['speed']))
 
-# Main window
+# START OF THE PROGRAM
+#---------------------
+
+# Main window configuration
 root = tk.Tk()
 root.title("Snake - main menu")
 root.geometry(str(MAIN_MENU_WIDTH)+"x"+str(MAIN_MENU_HEIGHT)+"+150+150")
 root.iconbitmap("img.ico")
+
 # Canvas object
 canv = tk.Canvas(root, width = MAIN_MENU_WIDTH, height = MAIN_MENU_HEIGHT, bg = "#e7ff6e")
 
-# Main Menu buttons
+# Main Menu buttons and their config
 b_frame = tk.Frame(root, width = 169, height = 234, bg = "#e7ff6e") 
 
 b_start = tk.Button(b_frame, bg = '#d16eff', width = BUTTON_WIDTH,font = 'Georgia 20', text = "Start", 
-	command = lambda: start(root, canv, GAME_WINDOW_CONFIG, MAIN_MENU))
+	command = lambda: start(root, canv, GAME_WINDOW_CONFIG, MAIN_MENU, GAME_OBJECTS))
 b_score = tk.Button(b_frame, bg = '#d16eff', width = BUTTON_WIDTH,font = 'Georgia 20', text = "Score", command = None)
 b_exit = tk.Button(b_frame, bg = '#d16eff', width = BUTTON_WIDTH,font = 'Georgia 20', text = "Exit", command = root.quit)
 
@@ -180,5 +188,6 @@ MAIN_MENU.append(b_frame)
 if(DEBUG):
 	root.bind("q", lambda a: root.quit())
 
+# MAIN LOOP AND canv pack
 canv.pack() # use pack() because we need root at (0, 0)
 root.mainloop()
