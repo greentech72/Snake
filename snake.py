@@ -169,10 +169,39 @@ def grid(canv, GAME_WINDOW_CONFIG):
 	for i in range(0, GAME_WINDOW_CONFIG['height'], GAME_WINDOW_CONFIG['size']):
 		canv.create_line(0, i, GAME_WINDOW_CONFIG['height'], i, width = 2, fill = 'red')
 
-def save(name, score):
-	file = open("data.dat", 'a+')
-	file.write(str(name) + " : " + str(score) + "\n")
-	file.close()
+def save(top, name, score):
+	try:
+		file = open("data.dat", 'r')
+		strings = str(file.read()).split("\n")
+		names_list = []
+		score_list = []
+		for string in strings:
+			if(string == ''):
+				continue
+			names_list.append(str(string).split(" : ")[0])
+			score_list.append( int(str(string).split(" : ")[1]) )
+		print(1, names_list, score_list)
+		try:
+			score_list[ names_list.index(name) ] = score
+		except:
+			score_list.append(score)
+			names_list.append(name)
+		file.close()
+		file = open("data.dat", 'w')
+		i = 0
+		for name in names_list:
+			file.write(str(name) + " : " + str(score_list[i]) + "\n")
+			i += 1
+		file.close()
+	except:
+		file = open("data.dat", 'w')
+		file.write(str(name) + " : " + str(score) + "\n")
+		file.close()
+	top.quit()
+
+def top_(root, top):
+	top.quit()
+	root.after(1, lambda: root.focus_force())
 
 def score_save(root, SCORE):
 	global BUTTON_WIDTH
@@ -180,15 +209,71 @@ def score_save(root, SCORE):
 	geometry, x, y = str(root.geometry()).split("+")
 	top.geometry( "300x300+" + str(x) + "+" + str(y) )
 	top.title("Score saver")
+	top.iconbitmap("img.ico")
+
 	# Edit
 	e = tk.Entry(top, font = 'Georgia 20')
 	tk.Label(top,bg = '#e7ff6e', text = "Enter your nickname", font = 'Georgia 20').place(x = 0, y = 0)
-	b_exit = tk.Button(top, bg = '#d16eff', width = BUTTON_WIDTH, font = 'Georgia 20', text = "Exit", command = top.quit)
-	b_comit = tk.Button(top, bg = '#d16eff', width = BUTTON_WIDTH, font = 'Georgia 20', text = "Submit", command = lambda: save(e.get(), SCORE))
+	b_exit = tk.Button(top, bg = '#d16eff', width = BUTTON_WIDTH, font = 'Georgia 20', text = "Exit", command = lambda: top_(root, top))
+	b_comit = tk.Button(top, bg = '#d16eff', width = BUTTON_WIDTH, font = 'Georgia 20', text = "Submit", command = lambda: save(top, e.get(), SCORE))
 
 	b_comit.place(x = 50, y = 90)
 	b_exit.place(x = 50, y = 180)
 	e.place(x = 0, y = 40)
+	top.bind("q", lambda a: top.quit())
+	top.mainloop()
+
+def load():
+	f = open("data.dat", 'r')
+	lines = str(f.read()).split("\n")
+	names_list = []
+	score_list = []
+	i = 0
+	for line in lines:
+		if(line == ''):
+			continue	
+		names_list.append( line.split(" : ")[0] )
+		score_list.append( int(line.split(" : ")[1]) )
+		i += 1
+	return [names_list, score_list]
+
+def score_load(root):
+	global BUTTON_WIDTH
+	names, score = load()
+	h = 40
+	w = 300
+	max_names = 14
+
+	w = 300 * int(len(names) / max_names) + 300
+	h = 600 if (len(names) >= max_names) else len(names)* 40 + 40 
+
+	if(h < 300):
+		h = 300
+	else:
+		h += 70
+	
+	top = tk.Toplevel(root, bg = '#e7ff6e')	
+	geometry, x, y = str(root.geometry()).split("+")
+
+	top.geometry( str(w) + "x" + str(h) + "+" + str(x) + "+" + str(y) )
+	top.title("Score")
+	top.iconbitmap("img.ico")
+
+	tk.Label(top,bg = '#e7ff6e', text = "Nickname", font = 'Georgia 20').place(x = 0, y = 0)
+	tk.Label(top,bg = '#e7ff6e', text = "Score", font = 'Georgia 20').place(x = 200, y = 0)	
+	b_exit = tk.Button(top, bg = '#d16eff', width = BUTTON_WIDTH, font = 'Georgia 20', text = "Exit", command = lambda: top_(root, top))
+	
+	i = 0
+	move = 0
+	for name in names:
+		if(i - max_names == 0):
+			move += 1
+			i = 0
+		tk.Label(top, bg = '#e7ff6e', text = name, font = 'Georgia 20').place(x = 5 + move * 300, y = 40*(i+1))
+		tk.Label(top, bg = '#e7ff6e', text = str(score[i]), font = 'Georgia 20').place(x = 200 + move * 300, y = 40*(i+1))
+		i += 1
+
+	b_exit.place(x = w / 2 - 100, y = h - 70)
 	top.bind("q", lambda a: top.quit())
 	top.mainloop()
 
@@ -241,7 +326,7 @@ b_frame = tk.Frame(root, width = 200, height = 300, bg = "#e7ff6e") #e7ff6e
 
 b_start = tk.Button(b_frame, bg = '#d16eff', width = BUTTON_WIDTH,font = 'Georgia 20', text = "Start", 
 	command = lambda: start(root, canv, GAME_WINDOW_CONFIG, MAIN_MENU, GAME_OBJECTS, DIE_BY_BORDER))
-b_score = tk.Button(b_frame, bg = '#d16eff', width = BUTTON_WIDTH,font = 'Georgia 20', text = "Score", command = None)
+b_score = tk.Button(b_frame, bg = '#d16eff', width = BUTTON_WIDTH,font = 'Georgia 20', text = "Score", command = lambda: score_load(root))
 b_exit = tk.Button(b_frame, bg = '#d16eff', width = BUTTON_WIDTH,font = 'Georgia 20', text = "Exit", command = root.quit)
 
 b_exit.place(x = 0, y = 190)
@@ -274,16 +359,3 @@ root.bind("r", lambda a: start(root, canv, GAME_WINDOW_CONFIG, MAIN_MENU, GAME_O
 # MAIN LOOP AND canv pack
 canv.pack() # use pack() because we need root at (0, 0)
 root.mainloop()
-
-
-
-
-
-
-
-
-
-
-
-
-
